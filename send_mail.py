@@ -8,11 +8,8 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import smtplib
 import click
-import sys
 import validators
 import socket
-
-if sys.version_info < (3, 12): raise RuntimeError("Requires Python 3.12a0+")
 
 # dummy class
 class Server(str): pass
@@ -24,11 +21,11 @@ class Port(int):
       raise self.PortOutOfRangeError(f'Port {port} is not in range of 0-65535 (inclusive)')
 
 @click.command(context_settings=dict(help_option_names=['-h', '--help']))
-@click.option('--smtp-server', '-s', type=Server, required=True, help='SMTP Server to connenvt to. e.g. smtp.gmail.com, smtp-mail.outlook.com')
+@click.option('--smtp-server', '-s', type=Server, required=True, help='SMTP Server to connect to. e.g. smtp.gmail.com, smtp-mail.outlook.com')
 @click.option('--ssl/--tls', is_flag=True, help='Establish SSL or TLS', default=False)
 @click.option('--smtp-port', '-p', type=Port, callback=lambda ctx, param, value: (465 if ctx.params['ssl'] else 587) if value is None else value)
-@click.option('--email', '-e', type=str, prompt_callback=lambda ctx, param, value: f'Enter email for {ctx.params["smtp_server"]} ({socket.getbyhostname(ctx.params["smtp_server"])})')
-@click.option('-p', '--password', prompt='Enter your password: ', hide_input=True, confirmation_prompt='Confirm Your password', help='Password for SMTP Server', callback=lambda ctx, param, value: click.prompt(f'Enter password for') if value is None else value)
+@click.option('--email', '-e', type=str, callback=lambda ctx, param, value: click.prompt(f'Enter email for {ctx.params["smtp_server"]} ({socket.gethostbyname(ctx.params["smtp_server"])})'))
+@click.option('-p', '--password', help='Password for SMTP Server', callback=lambda ctx, param, value: click.prompt(f'Enter your password for {ctx.params["smtp_server"]} ({socket.gethostbyname(ctx.params["smtp_server"])})', hide_input=True, confirmation_prompt=f'Confirm Your password for {ctx.params["smtp_server"]} ({socket.gethostbyname(ctx.params["smtp_server"])})',) if value is None else value)
 
 def main(smtp_server: str, smtp_port: int, ssl: bool, email: str, password: str):
   '''
