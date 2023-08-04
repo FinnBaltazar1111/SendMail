@@ -34,7 +34,7 @@ def main(smtp_server: str, smtp_port: int, ssl: bool, email: str, password: str)
   '''
   reciever = 'email.kanavg@gmail.com'
   message = MIMEMultipart('alternative')
-  msg_text = "<script>window.close()</script>"
+  msg_text = "<i>italic</i>"
 
   m1=MIMEText(msg_text, 'plain')
   m2=MIMEText(msg_text, 'html')
