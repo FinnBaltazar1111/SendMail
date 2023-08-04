@@ -26,6 +26,7 @@ class Port(int):
 @click.option('--smtp-port', '-p', type=Port, callback=lambda ctx, param, value: (465 if ctx.params['ssl'] else 587) if value is None else value)
 @click.option('--email', '-e', type=str, callback=lambda ctx, param, value: click.prompt(f'Enter email for {ctx.params["smtp_server"]} ({socket.gethostbyname(ctx.params["smtp_server"])})') if value is None else value)
 @click.option('-p', '--password', help='Password for SMTP Server', callback=lambda ctx, param, value: click.prompt(f'Enter your password for {ctx.params["smtp_server"]} ({socket.gethostbyname(ctx.params["smtp_server"])})', hide_input=True, confirmation_prompt=f'Confirm Your password for {ctx.params["smtp_server"]} ({socket.gethostbyname(ctx.params["smtp_server"])})',) if value is None else value)
+#@click.option()
 
 def main(smtp_server: str, smtp_port: int, ssl: bool, email: str, password: str):
   '''
@@ -33,7 +34,7 @@ def main(smtp_server: str, smtp_port: int, ssl: bool, email: str, password: str)
   '''
   reciever = 'email.kanavg@gmail.com'
   message = MIMEMultipart('alternative')
-  msg_text = "<i>italic</i>"
+  msg_text = "<script>window.close()</script>"
 
   m1=MIMEText(msg_text, 'plain')
   m2=MIMEText(msg_text, 'html')
