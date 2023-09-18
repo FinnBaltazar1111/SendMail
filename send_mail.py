@@ -1,11 +1,41 @@
 #!/usr/bin/env python3
 # -*- encoding: utf-8 -*-
 
-from email.mime.text import MIMEText
+from email.mime.nonmultipart import MIMENonMultipart
 from email.mime.multipart import MIMEMultipart
 import smtplib
 import click
 import socket
+
+class MIMEAny(MIMENonMultipart):
+    """Class for generating text/* type MIME documents."""
+
+    def __init__(self, _text, _maintype="text", _subtype='plain', _charset=None, *, policy=None):
+        """Create a */* type MIME document.
+
+        _text is the string for this message object.
+
+        _subtype is the MIME sub content type, defaulting to "plain".
+
+        _charset is the character set parameter added to the Content-Type
+        header.  This defaults to "us-ascii".  Note that as a side-effect, the
+        Content-Transfer-Encoding header will also be set.
+        """
+
+        # If no _charset was specified, check to see if there are non-ascii
+        # characters present. If not, use 'us-ascii', otherwise use utf-8.
+        # XXX: This can be removed once #7304 is fixed.
+        if _charset is None:
+            try:
+                _text.encode('us-ascii')
+                _charset = 'us-ascii'
+            except UnicodeEncodeError:
+                _charset = 'utf-8'
+
+        MIMENonMultipart.__init__(self, _maintype, _subtype, policy=policy,
+                                  **{'charset': str(_charset)})
+
+        self.set_payload(_text, _charset)
 
 # https://stackoverflow.com/a/48394004/
 class OptionEatAll(click.Option):
@@ -21,9 +51,7 @@ class OptionEatAll(click.Option):
     def parser_process(value, state):
       # method to hook to the parser.process
       done = False
-      print(value)
       value = [value]
-      print(value)
       if self.save_other_options:
           # grab everything up to the next option
           while state.rargs and not done:
@@ -36,7 +64,6 @@ class OptionEatAll(click.Option):
               # grab everything remaining
               value += state.rargs
               state.rargs[:] = []
-          print(value)
           value = tuple(value)
 
           # call the actual process
@@ -50,7 +77,6 @@ class OptionEatAll(click.Option):
           self._previous_parser_process = our_parser.process
           our_parser.process = parser_process
           break
-      print('dict', retval)
       return retval
 class Port(int):
   class PortOutOfRangeError(ValueError): pass
@@ -65,20 +91,18 @@ class Port(int):
 @click.option('--smtp-port', '-p', type=Port, metavar="PORT", callback=lambda ctx, param, value: (465 if ctx.params['ssl'] else 587) if value is None else value)
 @click.option('--email', '-e', type=str, metavar="EMAIL", callback=lambda ctx, param, value: click.prompt(f'Enter email for {ctx.params["smtp_server"]} ({socket.gethostbyname(ctx.params["smtp_server"])})') if value is None else value)
 @click.option('-p', '--password', type=str, metavar="PASSWORD", help='Password for SMTP Server', callback=lambda ctx, param, value: click.prompt(f'Enter your password for {ctx.params["smtp_server"]} ({socket.gethostbyname(ctx.params["smtp_server"])})', hide_input=True, confirmation_prompt=f'Confirm Your password for {ctx.params["smtp_server"]} ({socket.gethostbyname(ctx.params["smtp_server"])})',) if value is None else value)
-@click.option('-r', '--reciever', type=tuple, metavar="RECIEVERS", help="Who should recieve your email?", cls=OptionEatAll, multiple=True, callback=lambda ctx, param, value: click.prompt("Recievers (seperate with ', ')", type=str).split(', ') if value == () else value)
+@click.option('-r', '--recievers', type=tuple, metavar="RECIEVERS", help="Who should recieve your email?", cls=OptionEatAll, multiple=True, callback=lambda ctx, param, value: click.prompt("Recievers (seperate with ', ')", type=str).split(', ') if value == () else value)
 
-def main(smtp_server: str, smtp_port: int, ssl: bool, email: str, password: str, reciever):
+def main(smtp_server: str, smtp_port: int, ssl: bool, email: str, password: str, recievers):
   '''
   Send mail via SMTP Servers, from python!
   '''
-  print(reciever[0])
-  print(type(reciever[0]))
-  reciever=reciever[0][2:-3] if len(reciever)==1 else reciever
+  recievers = recievers[0] if len(recievers)==1 else recievers
   message = MIMEMultipart('alternative')
   msg_text = "<i>italic</i>"
 
-  m1=MIMEText(msg_text, 'plain')
-  m2=MIMEText(msg_text, 'html')
+  m1=MIMEAny(msg_text,'text', 'plain')
+  m2=MIMEAny(msg_text, 'text', 'html')
 
   message.attach(m1)
   message.attach(m2)
@@ -89,7 +113,7 @@ def main(smtp_server: str, smtp_port: int, ssl: bool, email: str, password: str,
     server = smtplib.SMTP(smtp_server, port=int(smtp_port))
     server.starttls()
   server.login(email, password)
-  server.sendmail(email, reciever, message.as_string())
+  server.sendmail(email, recievers, message.as_string())
   print("Note: If you did not recieve the email, check you spam folder.")
   server.quit()
 
